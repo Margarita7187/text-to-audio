@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Text to Speech | Озвучка текста нейросетью</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px;
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .main-panel {
+            flex: 2;
+            min-width: 250px;
+        }
+
+        .qr-panel {
+            flex: 1;
+            min-width: 200px;
+            background: #f8f9fa;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .qr-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .qr-code {
+            display: flex;
+            justify-content: center;
+            margin: 15px 0;
+        }
+
+        .url-box {
+            font-size: 11px;
+            color: #666;
+            background: white;
+            padding: 8px;
+            border-radius: 12px;
+            word-break: break-all;
+            margin: 10px 0;
+            border: 1px solid #e0e0e0;
+        }
+
+        .copy-btn {
+            background: #667eea;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: white;
+            font-weight: 500;
+            font-size: 12px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .copy-btn:hover {
+            background: #5a67d8;
+        }
+
+        .model-selector {
+            margin-bottom: 24px;
+        }
+
+        .model-selector label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: inherit;
+            background: white;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-area {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            transition: all 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .generate-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 14px;
+            display: none;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+
+        .status.warning {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .audio-player {
+            margin-top: 24px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 16px;
+            display: none;
+        }
+
+        .audio-player.show {
+            display: block;
+        }
+
+        .audio-player h3 {
+            margin-bottom: 12px;
+            color: #333;
+        }
+
+        audio {
+            width: 100%;
+            margin-bottom: 12px;
+        }
+
+        .download-btn {
+            width: 100%;
+            padding: 10px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .examples {
+            margin-top: 24px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 16px;
+        }
+
+        .examples h3 {
+            margin-bottom: 12px;
+            font-size: 16px;
+            color: #666;
+        }
+
+        .example-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .example-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .example-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .footer {
+            padding: 20px 30px;
+            background: #f5f5f5;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .token-warning {
+            background: #ffeb3b;
+            color: #333;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                flex-direction: column;
+            }
+            .qr-panel {
+                order: -1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <span>🎤</span>
+                Text to Speech
+                <span>🔊</span>
+            </h1>
+            <p>Преобразуйте текст в речь с помощью нейросети</p>
+        </div>
+
+        <div class="content">
+            <div class="main-panel">
+                <div class="model-selector">
+                    <label>🎙️ Выберите голос для озвучки</label>
+                    <select id="modelSelect">
+                        <option value="russian">🇷🇺 Русский голос (Bark) - рекомендуется</option>
+                        <option value="english_male">🇬🇧 English Male (Bark)</option>
+                        <option value="english_female">🇬🇧 English Female (MMS)</option>
+                    </select>
+                    <p style="font-size: 11px; color: #666; margin-top: 5px;">
+                        💡 Русский голос отлично работает через модель Bark
+                    </p>
+                </div>
+
+                <div class="input-area">
+                    <label>📝 Введите текст для озвучки</label>
+                    <textarea id="textInput" rows="5" placeholder="Например: Привет! Это тестовое сообщение, сгенерированное нейросетью. Как вам звучит?"></textarea>
+                </div>
+
+                <button class="generate-btn" id="generateBtn">
+                    <span>✨</span>
+                    <span>Сгенерировать речь</span>
+                </button>
+
+                <div class="status" id="status"></div>
+
+                <div class="audio-player" id="audioPlayer">
+                    <h3>🎧 Сгенерированная речь</h3>
+                    <audio id="audioElement" controls>
+                        Ваш браузер не поддерживает аудио
+                    </audio>
+                    <button class="download-btn" id="downloadBtn">
+                        <span>⬇️</span>
+                        <span>Скачать аудио</span>
+                    </button>
+                </div>
+
+                <div class="examples">
+                    <h3>💡 Примеры текста (нажмите для вставки)</h3>
+                    <div class="example-buttons">
+                        <button class="example-btn" data-text="Здравствуйте! Рад приветствовать вас в нашем новом приложении.">Приветствие</button>
+                        <button class="example-btn" data-text="Сегодня отличная погода, солнце светит ярко, настроение прекрасное.">О погоде</button>
+                        <button class="example-btn" data-text="Искусственный интеллект меняет наш мир каждый день.">Об ИИ</button>
+                        <button class="example-btn" data-text="Добро пожаловать в мир нейросетей и голосовых технологий.">Нейросети</button>
+                        <button class="example-btn" data-text="Голосовое управление становится всё популярнее с каждым годом.">Голосовое управление</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="qr-panel">
+                <div class="qr-title">
+                    📱 Открыть на телефоне
+                </div>
+                <div id="qrcode" class="qr-code"></div>
+                <div class="url-box" id="currentUrl">Загрузка...</div>
+                <button class="copy-btn" onclick="copyUrl()">
+                    📋 Скопировать ссылку
+                </button>
+                <div id="tokenWarning" class="token-warning" style="display: none;">
+                    ⚠️ API токен не настроен
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>🎤 Работает на моделях Hugging Face (MMS, Bark, SpeechT5) | Доступно с телефона</p>
+        </div>
+    </div>
+
+    <script>
+        const textInput = document.getElementById('textInput');
+        const modelSelect = document.getElementById('modelSelect');
+        const generateBtn = document.getElementById('generateBtn');
+        const statusDiv = document.getElementById('status');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const audioElement = document.getElementById('audioElement');
+        const downloadBtn = document.getElementById('downloadBtn');
+        
+        let currentAudioBlob = null;
+
+        // Вставка примеров
+        document.querySelectorAll('.example-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const text = btn.getAttribute('data-text');
+                textInput.value = text;
+                showStatus('Пример вставлен!', 'info');
+            });
+        });
+
+        function showStatus(message, type = 'info') {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type} show`;
+            setTimeout(() => {
+                if (statusDiv.className.includes(type)) {
+                    statusDiv.classList.remove('show');
+                }
+            }, 5000);
+        }
+
+        async function generateSpeech() {
+            const text = textInput.value.trim();
+            const model = modelSelect.value;
+            
+            if (!text) {
+                showStatus('Пожалуйста, введите текст для озвучки', 'error');
+                textInput.focus();
+                return;
+            }
+
+            if (text.length > 500) {
+                showStatus('Текст слишком длинный (макс. 500 символов)', 'error');
+                return;
+            }
+
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<span>⏳</span><span>Генерация речи... 10-30 секунд</span>';
+            showStatus('🎤 Генерация речи... Обычно 10-30 секунд', 'info');
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        model: model
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.status === 202 && data.status === 'loading') {
+                    showStatus('⏳ Модель загружается. Попробуйте через 10-20 секунд...', 'warning');
+                    generateBtn.disabled = false;
+                    generateBtn.innerHTML = '<span>✨</span><span>Сгенерировать речь</span>';
+                    return;
+                }
+
+                if (data.success) {
+                    audioPlayer.classList.add('show');
+                    
+                    if (data.audio_base64) {
+                        audioElement.src = `data:audio/wav;base64,${data.audio_base64}`;
+                        currentAudioBlob = base64ToBlob(data.audio_base64, 'audio/wav');
+                    } else if (data.audio_url) {
+                        audioElement.src = data.audio_url;
+                        const blobResponse = await fetch(data.audio_url);
+                        currentAudioBlob = await blobResponse.blob();
+                    }
+                    
+                    showStatus('✅ Речь успешно сгенерирована!', 'success');
+                    audioElement.play().catch(e => console.log('Автовоспроизведение заблокировано'));
+                    
+                } else {
+                    let errorMsg = data.error || 'Неизвестная ошибка';
+                    if (errorMsg.includes('401') || errorMsg.includes('authorization')) {
+                        errorMsg = '❌ Ошибка авторизации. Получите API токен на huggingface.co/settings/tokens';
+                        document.getElementById('tokenWarning').style.display = 'block';
+                    }
+                    showStatus(`❌ ${errorMsg}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Ошибка:', error);
+                showStatus(`❌ Ошибка соединения: ${error.message}`, 'error');
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<span>✨</span><span>Сгенерировать речь</span>';
+            }
+        }
+
+        function base64ToBlob(base64, mimeType) {
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            return new Blob([byteArray], { type: mimeType });
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            if (currentAudioBlob) {
+                const url = URL.createObjectURL(currentAudioBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `speech_${Date.now()}.wav`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showStatus('Скачивание началось!', 'success');
+            } else {
+                showStatus('Нет аудио для скачивания', 'error');
+            }
+        });
+
+        generateBtn.addEventListener('click', generateSpeech);
+
+        textInput.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                generateSpeech();
+            }
+        });
+
+        // QR Code
+        function displayUrlAndQR() {
+            const url = window.location.href;
+            const urlElement = document.getElementById('currentUrl');
+            if (urlElement) urlElement.textContent = url;
+            
+            const qrContainer = document.getElementById('qrcode');
+            if (qrContainer && url) {
+                qrContainer.innerHTML = '';
+                new QRCode(qrContainer, {
+                    text: url,
+                    width: 150,
+                    height: 150,
+                    colorDark: "#667eea",
+                    colorLight: "#ffffff"
+                });
+            }
+        }
+
+        function copyUrl() {
+            const url = document.getElementById('currentUrl')?.textContent;
+            if (url) {
+                navigator.clipboard.writeText(url);
+                const btn = event.target.closest('.copy-btn');
+                if (btn) {
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '✅ Скопировано!';
+                    setTimeout(() => btn.innerHTML = originalText, 2000);
+                }
+                showStatus('Ссылка скопирована!', 'success');
+            }
+        }
+
+        window.addEventListener('load', displayUrlAndQR);
+        
+        console.log('🎤 Text to Speech готов!');
+        
+        // Пример по умолчанию
+        if (!textInput.value) {
+            textInput.value = 'Добро пожаловать в Text to Speech генератор! Введите любой текст, и нейросеть озвучит его.';
+        }
+    </script>
+</body>
+</html>
